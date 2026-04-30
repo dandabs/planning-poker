@@ -1,0 +1,30 @@
+type Room {
+  id: ID!
+  revealed: Boolean!
+}
+
+type Participant {
+  id: ID!
+  roomId: ID!
+  username: String!
+  vote: String
+}
+
+type Query {
+  getRoom(roomId: ID!): Room
+  listParticipants(roomId: ID!): [Participant]
+}
+
+type Mutation {
+  joinRoom(roomId: ID!, username: String!): Participant
+  vote(roomId: ID!, userId: ID!, vote: String!): Participant
+  reveal(roomId: ID!): Room
+}
+
+type Subscription {
+  onRoomUpdate(roomId: ID!): Room
+    @aws_subscribe(mutations: ["reveal"])
+
+  onVote(roomId: ID!): Participant
+    @aws_subscribe(mutations: ["vote"])
+}
