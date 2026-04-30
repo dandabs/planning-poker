@@ -17,6 +17,7 @@ type Query {
 
 type Mutation {
   joinRoom(roomId: ID!, username: String!): Participant
+  ensureRoom(roomId: ID!): Room
   vote(roomId: ID!, userId: ID!, vote: String!): Participant
   reveal(roomId: ID!): Room
 }
@@ -26,5 +27,5 @@ type Subscription {
     @aws_subscribe(mutations: ["reveal"])
 
   onVote(roomId: ID!): Participant
-    @aws_subscribe(mutations: ["vote"])
+    @aws_subscribe(mutations: ["vote", "joinRoom"])
 }
