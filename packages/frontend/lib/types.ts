@@ -1,6 +1,7 @@
 // GraphQL Types
 export interface Room {
   id: string;
+  roomId: string;
   revealed: boolean;
 }
 

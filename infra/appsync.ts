@@ -30,6 +30,7 @@ appsyncApi.addResolver("Query getRoom", {
   }`,
   responseTemplate: `{
   "id": "$ctx.args.roomId",
+  "roomId": "$ctx.args.roomId",
   "revealed": #if($ctx.result && $ctx.result.revealed)true#else false#end
 }`
 });
@@ -76,6 +77,7 @@ appsyncApi.addResolver("Mutation reveal", {
   }`,
   responseTemplate: `{
   "id": "$ctx.args.roomId",
+  "roomId": "$ctx.args.roomId",
   "revealed": true
 }`
 });
@@ -151,6 +153,7 @@ appsyncApi.addResolver("Mutation ensureRoom", {
   }`,
   responseTemplate: `{
     "id": "$ctx.args.roomId",
+    "roomId": "$ctx.args.roomId",
     "revealed": false
   }`
 });

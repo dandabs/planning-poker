@@ -1,5 +1,6 @@
 type Room {
   id: ID!
+  roomId: ID!
   revealed: Boolean!
 }
 

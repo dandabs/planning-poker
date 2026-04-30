@@ -20,6 +20,7 @@ export const GET_ROOM = gql`
   query GetRoom($roomId: ID!) {
     getRoom(roomId: $roomId) {
       id
+      roomId
       revealed
     }
   }
@@ -51,6 +52,7 @@ export const ENSURE_ROOM = gql`
   mutation EnsureRoom($roomId: ID!) {
     ensureRoom(roomId: $roomId) {
       id
+      roomId
       revealed
     }
   }
@@ -71,6 +73,7 @@ export const REVEAL = gql`
   mutation Reveal($roomId: ID!) {
     reveal(roomId: $roomId) {
       id
+      roomId
       revealed
     }
   }
@@ -92,6 +95,7 @@ export const ON_ROOM_UPDATE = gql`
   subscription OnRoomUpdate($roomId: ID!) {
     onRoomUpdate(roomId: $roomId) {
       id
+      roomId
       revealed
     }
   }
