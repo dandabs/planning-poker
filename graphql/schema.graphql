@@ -24,6 +24,8 @@ type Mutation {
   vote(roomId: ID!, userId: ID!, vote: String!): Participant
   reveal(roomId: ID!): Room
   hide(roomId: ID!): Room
+  clearVote(roomId: ID!, userId: ID!): Participant
+  kick(roomId: ID!, userId: ID!): Participant
 }
 
 type Subscription {
@@ -31,7 +33,10 @@ type Subscription {
     @aws_subscribe(mutations: ["reveal", "hide"])
 
   onVote(roomId: ID!): Participant
-    @aws_subscribe(mutations: ["vote", "joinRoom"])
+    @aws_subscribe(mutations: ["vote", "joinRoom", "clearVote"])
+
+  # Internal publish mutation to broadcast participant updates
+  publishParticipantChange(roomId: ID!, userId: ID!, username: String, vote: String): Participant
 
   onParticipantLeft(roomId: ID!): Participant
     @aws_subscribe(mutations: ["participantLeft"])

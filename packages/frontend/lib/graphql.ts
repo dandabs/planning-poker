@@ -89,6 +89,38 @@ export const HIDE = gql`
   }
 `;
 
+export const CLEAR_VOTE = gql`
+  mutation ClearVote($roomId: ID!, $userId: ID!) {
+    clearVote(roomId: $roomId, userId: $userId) {
+      id
+      roomId
+      username
+      vote
+    }
+  }
+`;
+
+export const KICK = gql`
+  mutation Kick($roomId: ID!, $userId: ID!) {
+    kick(roomId: $roomId, userId: $userId) {
+      id
+      roomId
+      username
+    }
+  }
+`;
+
+export const PUBLISH_PARTICIPANT_CHANGE = gql`
+  mutation PublishParticipantChange($roomId: ID!, $userId: ID!, $username: String, $vote: String) {
+    publishParticipantChange(roomId: $roomId, userId: $userId, username: $username, vote: $vote) {
+      id
+      roomId
+      username
+      vote
+    }
+  }
+`;
+
 export const HEARTBEAT = gql`
   mutation Heartbeat($roomId: ID!, $userId: ID!) {
     heartbeat(roomId: $roomId, userId: $userId) {

@@ -10,10 +10,13 @@ interface ParticipantsListProps {
   revealed: boolean;
   onReveal?: () => void;
   revealDisabled?: boolean;
+  onKick?: (userId: string) => void;
+  onClear?: (userId: string) => void;
 }
 
-export function ParticipantsList({ participants, revealed, onReveal, revealDisabled }: ParticipantsListProps) {
+export function ParticipantsList({ participants, revealed, onReveal, revealDisabled, onKick, onClear }: ParticipantsListProps) {
   const { containerRef, tableRef, positions } = usePositioning(participants.length);
+  const [menu, setMenu] = useState<{ userId: string; left: string; top: string } | null>(null);
 
   return (
     <div className="space-y-3">
@@ -33,29 +36,67 @@ export function ParticipantsList({ participants, revealed, onReveal, revealDisab
         <div className="absolute inset-0 pointer-events-none">
             {participants.map((participant, idx) => {
               const pos = positions[idx] || { left: '0px', top: '0px' };
-            return (
-              <div
-                key={participant.id}
-                style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' }}
-                className="absolute w-28 flex flex-col items-center pointer-events-auto z-20"
-              >
-                <div className="mb-1 text-sm font-medium text-gray-700">{participant.username}</div>
+              return (
                 <div
-                  className={`w-24 h-32 rounded-lg flex items-center justify-center font-semibold text-xl shadow-md transition-colors ${
-                    revealed
-                      ? participant.vote
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-500'
-                      : participant.vote
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                  }`}
+                  key={participant.id}
+                  style={{ left: pos.left, top: pos.top, transform: 'translate(-50%, -50%)' }}
+                  className="absolute w-28 flex flex-col items-center pointer-events-auto z-20"
                 >
-                  {revealed ? (participant.vote || '?') : participant.vote ? '★' : '?'}
+                  <div className="mb-1 text-sm font-medium text-gray-700">{participant.username}</div>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const containerRect = containerRef.current?.getBoundingClientRect();
+                      if (!containerRect) return;
+                      const left = `${rect.left - containerRect.left + rect.width / 2}px`;
+                      const top = `${rect.top - containerRect.top + rect.height + 8}px`;
+                      setMenu({ userId: participant.id, left, top });
+                    }}
+                    className={`w-24 h-32 rounded-lg flex items-center justify-center font-semibold text-xl shadow-md transition-colors cursor-pointer ${
+                      revealed
+                        ? participant.vote
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-500'
+                        : participant.vote
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {revealed ? (participant.vote || '?') : participant.vote ? '★' : '?'}
+                  </div>
                 </div>
+              );
+            })}
+
+            {menu && (
+              <div
+                style={{ left: menu.left, top: menu.top, transform: 'translate(-50%, 0)' }}
+                className="absolute z-40 bg-white rounded-md shadow-lg p-2 w-32 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="w-full text-left px-2 py-1 hover:bg-gray-100 text-sm text-red-600"
+                  onClick={() => {
+                    setMenu(null);
+                    onKick && onKick(menu.userId);
+                  }}
+                >
+                  Kick
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-2 py-1 hover:bg-gray-100 text-sm"
+                  onClick={() => {
+                    setMenu(null);
+                    onClear && onClear(menu.userId);
+                  }}
+                >
+                  Clear Choice
+                </button>
               </div>
-            );
-          })}
+            )}
         </div>
       </div>
     </div>

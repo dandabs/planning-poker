@@ -242,3 +242,58 @@ appsyncApi.addResolver("Mutation ensureRoom", {
     "revealed": #if($ctx.result && $ctx.result.revealed)true#else false#end
   }`
 });
+
+// Clear a participant's vote
+appsyncApi.addResolver("Mutation clearVote", {
+  dataSource: "dynamoDS",
+  requestTemplate: `{
+    "version": "2017-02-28",
+    "operation": "UpdateItem",
+    "key": {
+      "pk": { "S": "ROOM#$ctx.args.roomId" },
+      "sk": { "S": "USER#$ctx.args.userId" }
+    },
+    "update": {
+      "expression": "REMOVE vote"
+    }
+  }`,
+  responseTemplate: `{
+    "id": "$ctx.args.userId",
+    "roomId": "$ctx.args.roomId",
+    "username": #if($ctx.result.username)"$ctx.result.username"#else "User"#end,
+    "vote": null
+  }`
+});
+
+// Kick a participant (delete user entry)
+appsyncApi.addResolver("Mutation kick", {
+  dataSource: "dynamoDS",
+  requestTemplate: `{
+    "version": "2017-02-28",
+    "operation": "DeleteItem",
+    "key": {
+      "pk": { "S": "ROOM#$ctx.args.roomId" },
+      "sk": { "S": "USER#$ctx.args.userId" }
+    }
+  }`,
+  responseTemplate: `{
+    "id": "$ctx.args.userId",
+    "roomId": "$ctx.args.roomId",
+    "username": #if($ctx.args.username)"$ctx.args.username"#else "User"#end
+  }`
+});
+
+// publish participant change (noneDS) - used to broadcast arbitrary participant updates
+appsyncApi.addResolver("Mutation publishParticipantChange", {
+  dataSource: "noneDS",
+  requestTemplate: `{
+    "version": "2017-02-28",
+    "payload": $util.toJson($ctx.args)
+  }`,
+  responseTemplate: `{
+    "id": "$ctx.args.userId",
+    "roomId": "$ctx.args.roomId",
+    "username": #if($ctx.args.username)"$ctx.args.username"#else "User"#end,
+    "vote": #if($ctx.args.vote)"$ctx.args.vote"#else null#end
+  }`
+});

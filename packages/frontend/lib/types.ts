@@ -19,4 +19,5 @@ export interface RoomState {
   currentUserId: string | null;
   loading: boolean;
   error: string | null;
+  kicked?: boolean;
 }

@@ -23,7 +23,7 @@ export default function RoomPage({ params }: PageProps) {
     });
   }, [params]);
 
-  const { room, participants, currentUserId, loading, error, joinRoom, submitVote, revealVotes, hideVotes } =
+  const { room, participants, currentUserId, loading, error, joinRoom, submitVote, revealVotes, hideVotes, clearParticipantVote, kickParticipant, kicked } =
     useRoom(roomId || '');
 
   const [joined, setJoined] = useState(false);
@@ -85,6 +85,28 @@ export default function RoomPage({ params }: PageProps) {
           </div>
         </div>
 
+        {kicked && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+              <h2 className="text-lg font-semibold text-red-600 mb-3">You have been kicked</h2>
+              <p className="text-sm text-gray-700 mb-6">You were removed from this room.</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                >
+                  Refresh
+                </button>
+                <button
+                  onClick={() => (window.location.href = '/')}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                >
+                  Go Home
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Main Content */}
         <div className="space-y-8">
           {/* Participants */}
@@ -97,6 +119,8 @@ export default function RoomPage({ params }: PageProps) {
                 revealed={room?.revealed || false}
                 onReveal={() => (room?.revealed ? hideVotes() : revealVotes())}
                 revealDisabled={loading || participants.length === 0}
+                onKick={(userId) => kickParticipant(userId)}
+                onClear={(userId) => clearParticipantVote(userId)}
               />
             )}
           </div>

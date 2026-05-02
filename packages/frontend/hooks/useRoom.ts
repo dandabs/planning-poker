@@ -11,6 +11,8 @@ import {
   VOTE,
   REVEAL,
   HIDE,
+  CLEAR_VOTE,
+  KICK,
   ON_VOTE,
   ON_ROOM_UPDATE,
   HEARTBEAT,
@@ -31,6 +33,7 @@ type Action =
   | { type: 'SET_CURRENT_USER'; payload: string }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'REMOVE_PARTICIPANT'; payload: string }
+  | { type: 'SET_KICKED'; payload: boolean }
   | { type: 'RESET' };
 
 const initialState: RoomState = {
@@ -70,6 +73,8 @@ function roomReducer(state: RoomState, action: Action): RoomState {
       return { ...state, error: action.payload };
     case 'REMOVE_PARTICIPANT':
       return { ...state, participants: state.participants.filter(p => p.id !== action.payload) };
+    case 'SET_KICKED':
+      return { ...state, kicked: action.payload };
     case 'RESET':
       return initialState;
     default:
@@ -220,6 +225,38 @@ export function useRoom(roomId: string) {
     }
   }, [roomId]);
 
+  const clearParticipantVote = useCallback(async (userId: string) => {
+    try {
+      const res = await executeQuery<{ clearVote: Participant }>(CLEAR_VOTE, { roomId, userId });
+      if (res?.clearVote) {
+        dispatch({ type: 'UPDATE_PARTICIPANT', payload: res.clearVote });
+        // also publish the change so other clients receive the update
+        try {
+          await executeQuery(PUBLISH_PARTICIPANT_CHANGE, {
+            roomId,
+            userId: res.clearVote.id,
+            username: res.clearVote.username,
+            vote: res.clearVote.vote,
+          });
+        } catch (e) {
+          console.warn('Publish participant change failed', e);
+        }
+      }
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to clear vote' });
+    }
+  }, [roomId]);
+
+  const kickParticipant = useCallback(async (userId: string) => {
+    try {
+      await executeQuery(KICK, { roomId, userId });
+      // remove locally
+      dispatch({ type: 'REMOVE_PARTICIPANT', payload: userId });
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to kick participant' });
+    }
+  }, [roomId]);
+
   // Subscribe to vote updates
   useEffect(() => {
     const subscriptionId = `onVote_${roomId}`;
@@ -259,7 +296,13 @@ export function useRoom(roomId: string) {
         { roomId },
         (data: { onParticipantLeft?: Participant }) => {
           if (data?.onParticipantLeft) {
-            dispatch({ type: 'REMOVE_PARTICIPANT', payload: data.onParticipantLeft.id });
+            const id = data.onParticipantLeft.id;
+            // remove participant from list
+            dispatch({ type: 'REMOVE_PARTICIPANT', payload: id });
+            // if the event is for this client, mark as kicked
+            if (id === state.currentUserId) {
+              dispatch({ type: 'SET_KICKED', payload: true });
+            }
           }
         },
         (error) => {
@@ -375,5 +418,8 @@ export function useRoom(roomId: string) {
     submitVote,
     revealVotes,
     hideVotes,
+    clearParticipantVote,
+    kickParticipant,
+    kicked: state.kicked || false,
   };
 }
