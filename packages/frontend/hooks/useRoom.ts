@@ -384,18 +384,13 @@ export function useRoom(roomId: string) {
       }
     };
 
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') sendLeft();
-    };
-
     const onPageHide = () => sendLeft();
 
-    document.addEventListener('visibilitychange', onVisibility);
+    // Only send leave on pagehide / unload — don't send on visibilitychange
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('beforeunload', sendLeft);
 
     return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('beforeunload', sendLeft);
     };
