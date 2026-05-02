@@ -91,12 +91,35 @@ appsyncApi.addResolver("Mutation reveal", {
 }`
 });
 
+appsyncApi.addResolver("Mutation hide", {
+  dataSource: "dynamoDS",
+  requestTemplate: `{
+    "version": "2017-02-28",
+    "operation": "UpdateItem",
+    "key": {
+      "pk": { "S": "ROOM#$ctx.args.roomId" },
+      "sk": { "S": "META" }
+    },
+    "update": {
+      "expression": "SET revealed = :r",
+      "expressionValues": {
+        ":r": { "BOOL": false }
+      }
+    }
+  }`,
+  responseTemplate: `{
+  "id": "$ctx.args.roomId",
+  "roomId": "$ctx.args.roomId",
+  "revealed": false
+}`
+});
+
 appsyncApi.addResolver("Mutation joinRoom", {
   dataSource: "dynamoDS",
   requestTemplate: `#set($userId = $util.autoId())
 #set($ctx.stash.userId = $userId)
 #set($ttl = $util.time.nowEpochMilliSeconds())
-#set($ttl = $ttl + 60000)
+#set($ttl = $ttl + 40000)
 #set($attrMap = $util.dynamodb.toMapValues({
   "roomId": $ctx.args.roomId,
   "username": $ctx.args.username,
@@ -132,7 +155,7 @@ appsyncApi.addResolver("Mutation heartbeat", {
   dataSource: "dynamoDS",
   requestTemplate: `{
     #set($ttl = $util.time.nowEpochMilliSeconds())
-    #set($ttl = $ttl + 60000)
+    #set($ttl = $ttl + 40000)
     "version": "2017-02-28",
     "operation": "UpdateItem",
     "key": {
@@ -201,20 +224,21 @@ appsyncApi.addResolver("Mutation ensureRoom", {
   dataSource: "dynamoDS",
   requestTemplate: `{
     "version": "2017-02-28",
-    "operation": "PutItem",
+    "operation": "UpdateItem",
     "key": {
       "pk": { "S": "ROOM#$ctx.args.roomId" },
       "sk": { "S": "META" }
     },
-    "attributeValues": {
-      "roomId": { "S": "$ctx.args.roomId" },
-      "revealed": { "BOOL": false },
-      "type": { "S": "ROOM" }
-    }
+    "update": {
+      "expression": "SET roomId = if_not_exists(roomId, :rid), revealed = if_not_exists(revealed, :false), #t = if_not_exists(#t, :room)",
+      "expressionNames": {"#t": "type"},
+      "expressionValues": $util.toJson($util.dynamodb.toMapValues({":rid": "$ctx.args.roomId", ":false": false, ":room": "ROOM"}))
+    },
+    
   }`,
   responseTemplate: `{
     "id": "$ctx.args.roomId",
     "roomId": "$ctx.args.roomId",
-    "revealed": false
+    "revealed": #if($ctx.result && $ctx.result.revealed)true#else false#end
   }`
 });

@@ -23,11 +23,12 @@ type Mutation {
   participantLeft(roomId: ID!, userId: ID!, username: String): Participant
   vote(roomId: ID!, userId: ID!, vote: String!): Participant
   reveal(roomId: ID!): Room
+  hide(roomId: ID!): Room
 }
 
 type Subscription {
   onRoomUpdate(roomId: ID!): Room
-    @aws_subscribe(mutations: ["reveal"])
+    @aws_subscribe(mutations: ["reveal", "hide"])
 
   onVote(roomId: ID!): Participant
     @aws_subscribe(mutations: ["vote", "joinRoom"])

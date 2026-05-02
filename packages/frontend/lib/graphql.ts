@@ -79,6 +79,16 @@ export const REVEAL = gql`
   }
 `;
 
+export const HIDE = gql`
+  mutation Hide($roomId: ID!) {
+    hide(roomId: $roomId) {
+      id
+      roomId
+      revealed
+    }
+  }
+`;
+
 export const HEARTBEAT = gql`
   mutation Heartbeat($roomId: ID!, $userId: ID!) {
     heartbeat(roomId: $roomId, userId: $userId) {

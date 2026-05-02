@@ -10,6 +10,7 @@ import {
   ENSURE_ROOM,
   VOTE,
   REVEAL,
+  HIDE,
   ON_VOTE,
   ON_ROOM_UPDATE,
   HEARTBEAT,
@@ -208,6 +209,17 @@ export function useRoom(roomId: string) {
     }
   }, [roomId]);
 
+  const hideVotes = useCallback(async () => {
+    try {
+      await executeQuery(HIDE, { roomId });
+    } catch (error) {
+      dispatch({
+        type: 'SET_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to hide votes',
+      });
+    }
+  }, [roomId]);
+
   // Subscribe to vote updates
   useEffect(() => {
     const subscriptionId = `onVote_${roomId}`;
@@ -362,5 +374,6 @@ export function useRoom(roomId: string) {
     joinRoom,
     submitVote,
     revealVotes,
+    hideVotes,
   };
 }
