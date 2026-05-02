@@ -1,81 +1,63 @@
-# Monorepo Template
+# Planning Poker
 
-A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/docs/set-up-a-monorepo).
+Planning Poker is a lightweight real-time estimation app built with Next.js (frontend), AppSync + DynamoDB (GraphQL API), and SST for infrastructure.
 
-## Get started
+This repository is a monorepo with frontend, serverless functions, and infrastructure code.
 
-1. Use this template to [create your own repo](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+Quick links
+- Frontend: `packages/frontend`
+- Functions (lambda): `packages/functions`
+- Infra: `infra`
+- GraphQL schema: `graphql/schema.graphql`
 
-2. Clone the new repo.
+Prerequisites
+- Node.js 18+ and npm
+- (Optional) SST CLI for local infra: `npm i -g sst`
 
-   ```bash
-   git clone <REPO_URL> MY_APP
-   cd MY_APP
-   ```
+Install
 
-3. Rename the files in the project to the name of your app.
+```bash
+# from repo root
+npm install
+```
 
-   ```bash
-   npx replace-in-file '/planning-poker/g' 'MY_APP' '**/*.*' --verbose
-   ```
+Run locally (frontend only)
 
-4. Deploy!
+```bash
+npm run dev
 
-   ```bash
-   npm install
-   npx sst deploy
-   ```
+# Open: http://localhost:3000/room/<roomId>?username=YourName
+```
 
-5. Optionally, enable [_git push to deploy_](https://sst.dev/docs/console/#autodeploy).
+Run with local infra (SST)
 
-## Usage
+```bash
+# Start SST dev (local infra + lambdas)
+npx sst dev
 
-This template uses [npm Workspaces](https://docs.npmjs.com/cli/v8/using-npm/workspaces). It has 3 packages to start with and you can add more it.
+# or deploy
+npx sst deploy
+```
 
-1. `core/`
+Features
+- Real-time participant list and votes (WebSocket subscriptions)
+- Card-style UI: participant cards arranged around a table
+- Voting options shown as cards on a bottom bar
+- Reveal / Hide votes (syncs for all users)
+- Kick participant or Clear their vote (admin actions)
+- Presence heartbeat every 30s; participant TTL set to 40s
 
-   This is for any shared code. It's defined as modules. For example, there's the `Example` module.
+GraphQL
+- Schema: `graphql/schema.graphql`
 
-   ```ts
-   export module Example {
-     export function hello() {
-       return "Hello, world!";
-     }
-   }
-   ```
+How to use
+- Open a room: `/room/<roomId>?username=YourName` in the frontend
+- Click a vote to cast; host can reveal or hide votes using the table button
+- Click a participant card to open a menu with **Kick** and **Clear Choice**
 
-   That you can use across other packages using.
+Contributing
+- Make changes on a branch, run tests in `core/` with `npm test`, and open a pull request.
 
-   ```ts
-   import { Example } from "@aws-monorepo/core/example";
+License
+- See `LICENSE` in the repo root.
 
-   Example.hello();
-   ```
-
-   We also have [Vitest](https://vitest.dev/) configured for testing this package with the `sst shell` CLI.
-
-   ```bash
-   npm test
-   ```
-
-2. `functions/`
-
-   This is for your Lambda functions and it uses the `core` package as a local dependency.
-
-3. `scripts/`
-
-    This is for any scripts that you can run on your SST app using the `sst shell` CLI and [`tsx`](https://www.npmjs.com/package/tsx). For example, you can run the example script using:
-
-   ```bash
-   npm run shell src/example.ts
-   ```
-
-### Infrastructure
-
-The `infra/` directory allows you to logically split the infrastructure of your app into separate files. This can be helpful as your app grows.
-
-In the template, we have an `api.ts`, and `storage.ts`. These export the created resources. And are imported in the `sst.config.ts`.
-
----
-
-**Join our community** [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [X.com](https://x.com/SST_dev)
