@@ -11,8 +11,8 @@ export default $config({
   },
   async run() {
     await import("./infra/nextjs");
-    await import("./infra/dynamodb");
     await import("./infra/appsync");
+    await import("./infra/dynamodb");
 
     return {};
   },

@@ -13,6 +13,15 @@ export const appsyncApiKey = new aws.appsync.ApiKey("PokerApiKey", {
     apiId: appsyncApi.id,
 });
 
+pokerTable.subscribe("PokerStream", {
+  handler: 'packages/functions/src/dynamoStreamHandler.handler',
+  runtime: 'nodejs18.x',
+  environment: {
+    APPSYNC_API_KEY: appsyncApiKey.key,
+  },
+  link: [appsyncApi]
+});
+
 appsyncApi.addDataSource({
   name: "dynamoDS",
   dynamodb: pokerTable.arn,
@@ -86,6 +95,16 @@ appsyncApi.addResolver("Mutation joinRoom", {
   dataSource: "dynamoDS",
   requestTemplate: `#set($userId = $util.autoId())
 #set($ctx.stash.userId = $userId)
+#set($ttl = $util.time.nowEpochMilliSeconds())
+#set($ttl = $ttl + 60000)
+#set($attrMap = $util.dynamodb.toMapValues({
+  "roomId": $ctx.args.roomId,
+  "username": $ctx.args.username,
+  "userId": $userId,
+  "type": "USER",
+  "expiresAt": $ttl
+}))
+#set($ctx.stash.attrMap = $attrMap)
 {
   "version": "2017-02-28",
   "operation": "PutItem",
@@ -93,12 +112,7 @@ appsyncApi.addResolver("Mutation joinRoom", {
     "pk": { "S": "ROOM#$ctx.args.roomId" },
     "sk": { "S": "USER#$userId" }
   },
-  "attributeValues": {
-    "roomId": { "S": "$ctx.args.roomId" },
-    "username": { "S": "$ctx.args.username" },
-    "userId": { "S": "$userId" },
-    "type": { "S": "USER" }
-  }
+  "attributeValues": $util.toJson($ctx.stash.attrMap)
 }`,
   responseTemplate: `{
   "id": "$ctx.stash.userId",
@@ -107,6 +121,53 @@ appsyncApi.addResolver("Mutation joinRoom", {
   "vote": null
 }`
 });
+
+// Add a NONE data source to allow publishing subscription events from external callers
+appsyncApi.addDataSource({
+  name: "noneDS",
+});
+
+// Heartbeat mutation - updates ttl for a user
+appsyncApi.addResolver("Mutation heartbeat", {
+  dataSource: "dynamoDS",
+  requestTemplate: `{
+    #set($ttl = $util.time.nowEpochMilliSeconds())
+    #set($ttl = $ttl + 60000)
+    "version": "2017-02-28",
+    "operation": "UpdateItem",
+    "key": {
+      "pk": { "S": "ROOM#$ctx.args.roomId" },
+      "sk": { "S": "USER#$ctx.args.userId" }
+    },
+    "update": {
+      "expression": "SET #exp = :t",
+      "expressionNames": {
+        "#exp": "expiresAt"
+      },
+      "expressionValues": $util.toJson($util.dynamodb.toMapValues({":t": $ttl}))
+    }
+  }`,
+  responseTemplate: `{
+    "id": "$ctx.args.userId",
+    "roomId": "$ctx.args.roomId"
+  }`
+});
+
+// participantLeft mutation - used by stream lambda to publish a subscription event
+appsyncApi.addResolver("Mutation participantLeft", {
+  dataSource: "noneDS",
+  requestTemplate: `{
+    "version": "2017-02-28",
+    "payload": $util.toJson($ctx.args)
+  }`,
+  responseTemplate: `{
+    "id": "$ctx.args.userId",
+    "roomId": "$ctx.args.roomId",
+    "username": #if($ctx.args.username)"$ctx.args.username"#else "User"#end
+  }`
+});
+
+// debug resolver removed
 
 appsyncApi.addResolver("Query listParticipants", {
   dataSource: "dynamoDS",

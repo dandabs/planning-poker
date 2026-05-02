@@ -7,9 +7,11 @@
   "scripts": {},
   "devDependencies": {
     "@tsconfig/node22": "^22",
+    "@types/node": "^25.6.0",
     "typescript": "^5"
   },
   "dependencies": {
+    "https": "^1.0.0",
     "sst": "4.12.10"
   }
 }

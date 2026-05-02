@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer, useCallback } from 'react';
+import { useEffect, useReducer, useCallback, useRef } from 'react';
 import {
   executeQuery,
   subscriptionManager,
@@ -12,9 +12,13 @@ import {
   REVEAL,
   ON_VOTE,
   ON_ROOM_UPDATE,
+  HEARTBEAT,
+  PARTICIPANT_LEFT,
+  ON_PARTICIPANT_LEFT,
   type RoomUpdateSubscriptionPayload,
   type VoteSubscriptionPayload,
 } from '@/lib/graphql';
+import { API_ENDPOINT, API_KEY } from '@/lib/graphql';
 import { RoomState, Room, Participant } from '@/lib/types';
 
 type Action =
@@ -25,6 +29,7 @@ type Action =
   | { type: 'UPDATE_PARTICIPANT'; payload: Participant }
   | { type: 'SET_CURRENT_USER'; payload: string }
   | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'REMOVE_PARTICIPANT'; payload: string }
   | { type: 'RESET' };
 
 const initialState: RoomState = {
@@ -62,6 +67,8 @@ function roomReducer(state: RoomState, action: Action): RoomState {
       return { ...state, currentUserId: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'REMOVE_PARTICIPANT':
+      return { ...state, participants: state.participants.filter(p => p.id !== action.payload) };
     case 'RESET':
       return initialState;
     default:
@@ -71,6 +78,8 @@ function roomReducer(state: RoomState, action: Action): RoomState {
 
 export function useRoom(roomId: string) {
   const [state, dispatch] = useReducer(roomReducer, initialState);
+  const heartbeatRef = useRef<number | null>(null);
+  const usernameRef = useRef<string | null>(null);
 
   const syncRoomData = useCallback(async () => {
     try {
@@ -121,10 +130,32 @@ export function useRoom(roomId: string) {
         );
         const participant = response.joinRoom;
         dispatch({ type: 'SET_CURRENT_USER', payload: participant.id });
-        
+        usernameRef.current = username;
+
         // Ensure room metadata exists
         await executeQuery(ENSURE_ROOM, { roomId });
-        
+
+        // start heartbeat to keep TTL updated
+        if (participant.id) {
+          // clear existing
+          if (heartbeatRef.current) {
+            clearInterval(heartbeatRef.current);
+          }
+
+          // send initial heartbeat immediately
+          executeQuery(HEARTBEAT, { roomId, userId: participant.id }).catch((err) =>
+            console.error('Heartbeat failed', err)
+          );
+
+          // start an interval that updates TTL every 30 seconds
+          const id = window.setInterval(() => {
+            executeQuery(HEARTBEAT, { roomId, userId: participant.id }).catch((err) =>
+              console.error('Heartbeat failed', err)
+            );
+          }, 30_000);
+          heartbeatRef.current = id;
+        }
+
         await syncRoomData();
       } catch (error) {
         dispatch({
@@ -205,6 +236,31 @@ export function useRoom(roomId: string) {
     };
   }, [roomId, state.currentUserId]);
 
+  // Subscribe to participant-left events
+  useEffect(() => {
+    const subscriptionId = `onParticipantLeft_${roomId}`;
+
+    if (state.currentUserId) {
+      subscriptionManager.subscribe(
+        subscriptionId,
+        ON_PARTICIPANT_LEFT,
+        { roomId },
+        (data: { onParticipantLeft?: Participant }) => {
+          if (data?.onParticipantLeft) {
+            dispatch({ type: 'REMOVE_PARTICIPANT', payload: data.onParticipantLeft.id });
+          }
+        },
+        (error) => {
+          console.error('Subscription error:', JSON.stringify(error));
+        }
+      );
+    }
+
+    return () => {
+      subscriptionManager.unsubscribe(subscriptionId);
+    };
+  }, [roomId, state.currentUserId]);
+
   // Subscribe to room updates (reveal)
   useEffect(() => {
     const subscriptionId = `onRoomUpdate_${roomId}`;
@@ -237,6 +293,66 @@ export function useRoom(roomId: string) {
   useEffect(() => {
     return () => {
       subscriptionManager.unsubscribeAll();
+    };
+  }, []);
+
+  // Send participantLeft when the user closes the tab/window
+  useEffect(() => {
+    if (!state.currentUserId) return;
+
+    const sendLeft = () => {
+      const userId = state.currentUserId;
+      const username = usernameRef.current ?? null;
+      const payload = { roomId, userId, username };
+
+      try {
+        // Prefer sendBeacon to survive unload; send to local API route that forwards to AppSync
+        const url = '/api/leave';
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        const beaconSent = typeof navigator !== 'undefined' && navigator.sendBeacon && navigator.sendBeacon(url, blob);
+        if (beaconSent) {
+          console.debug('leave: beacon sent', payload);
+          return;
+        }
+
+        // Fallback to fetch with keepalive
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        })
+          .then((res) => console.debug('leave response', res.status, res.statusText))
+          .catch((e) => console.warn('leave fetch failed', e));
+      } catch (e) {
+        console.warn('leave send failed', e);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') sendLeft();
+    };
+
+    const onPageHide = () => sendLeft();
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', sendLeft);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', sendLeft);
+    };
+  }, [state.currentUserId, roomId]);
+
+  // Clear heartbeat interval on unmount
+  useEffect(() => {
+    return () => {
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
     };
   }, []);
 

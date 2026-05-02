@@ -2,8 +2,8 @@ import { GraphQLClient, gql } from 'graphql-request';
 import type { Participant, Room } from './types';
 
 // Get the API endpoint and API key from environment variables
-const API_ENDPOINT = process.env.NEXT_PUBLIC_APPSYNC_API_URL || 'http://localhost:3000/graphql';
-const API_KEY = process.env.NEXT_PUBLIC_APPSYNC_API_KEY || '';
+export const API_ENDPOINT = process.env.NEXT_PUBLIC_APPSYNC_API_URL || 'http://localhost:3000/graphql';
+export const API_KEY = process.env.NEXT_PUBLIC_APPSYNC_API_KEY || '';
 
 // Initialize GraphQL client for HTTP operations (queries and mutations)
 const headers: Record<string, string> = {
@@ -79,6 +79,25 @@ export const REVEAL = gql`
   }
 `;
 
+export const HEARTBEAT = gql`
+  mutation Heartbeat($roomId: ID!, $userId: ID!) {
+    heartbeat(roomId: $roomId, userId: $userId) {
+      id
+      roomId
+    }
+  }
+`;
+
+export const PARTICIPANT_LEFT = gql`
+  mutation ParticipantLeft($roomId: ID!, $userId: ID!, $username: String) {
+    participantLeft(roomId: $roomId, userId: $userId, username: $username) {
+      id
+      roomId
+      username
+    }
+  }
+`;
+
 // Subscription documents (for WebSocket handling)
 export const ON_VOTE = gql`
   subscription OnVote($roomId: ID!) {
@@ -97,6 +116,16 @@ export const ON_ROOM_UPDATE = gql`
       id
       roomId
       revealed
+    }
+  }
+`;
+
+export const ON_PARTICIPANT_LEFT = gql`
+  subscription OnParticipantLeft($roomId: ID!) {
+    onParticipantLeft(roomId: $roomId) {
+      id
+      roomId
+      username
     }
   }
 `;
