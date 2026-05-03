@@ -8,5 +8,9 @@ export const frontend = new sst.aws.Nextjs("Frontend", {
     NEXT_PUBLIC_APPSYNC_API_URL: appsyncApi.url,
     NEXT_PUBLIC_APPSYNC_API_KEY: appsyncApiKey.key,
     POKER_TABLE_NAME: pokerTable.name,
-  }
+  },
+  domain: $app.stage === "prod" ?  {
+    name: "poker.dsk.is",
+    dns: sst.cloudflare.dns()
+  } : undefined
 });

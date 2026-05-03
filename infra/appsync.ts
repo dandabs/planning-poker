@@ -9,6 +9,11 @@ export const appsyncApi = new sst.aws.AppSync("PokerApi", {
   },
 });
 
+// appsyncApi.addDataSource({
+//   name: "dynamoDS",
+//   dynamodb: pokerTable.arn,
+// });
+
 export const appsyncApiKey = new aws.appsync.ApiKey("PokerApiKey", {
     apiId: appsyncApi.id,
 });
@@ -20,11 +25,6 @@ pokerTable.subscribe("PokerStream", {
     APPSYNC_API_KEY: appsyncApiKey.key,
   },
   link: [appsyncApi]
-});
-
-appsyncApi.addDataSource({
-  name: "dynamoDS",
-  dynamodb: pokerTable.arn,
 });
 
 appsyncApi.addResolver("Query getRoom", {
